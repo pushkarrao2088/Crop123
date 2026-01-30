@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { getBeginnerPlantingPlan } from '../services/geminiService';
+import { cropService } from '../services/cropService';
 import { Rocket, Sprout, CloudSun, Leaf, Loader2, CheckCircle, ArrowRight, BookOpen, Target, ShieldCheck } from 'lucide-react';
 
 const soilTypes = [
@@ -10,7 +11,11 @@ const soilTypes = [
   { id: 'silt', name: 'Silt Soil', desc: 'Smooth, retains moisture effectively.', color: 'bg-slate-100 border-slate-200' },
 ];
 
-const BeginnerPlanner: React.FC = () => {
+interface BeginnerPlannerProps {
+  userId?: string;
+}
+
+const BeginnerPlanner: React.FC<BeginnerPlannerProps> = ({ userId }) => {
   const [step, setStep] = React.useState(1);
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState<string | null>(null);
@@ -25,6 +30,16 @@ const BeginnerPlanner: React.FC = () => {
     try {
       const result = await getBeginnerPlantingPlan(formData);
       setPlan(result);
+
+      if (userId) {
+        await cropService.savePlantingPlan(
+          userId,
+          formData.crop,
+          formData.soil,
+          formData.weather,
+          result
+        );
+      }
     } catch (e) {
       setPlan("Failed to generate your personalized plan. Please try again.");
     } finally {

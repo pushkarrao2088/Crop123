@@ -1,9 +1,14 @@
 
 import React from 'react';
 import { analyzeSoilHealth } from '../services/geminiService';
-import { FlaskConical, Beaker, Loader2, CheckCircle2, TrendingUp, Sparkles, MapPin, Leaf, Droplets, Info, Sun, ShieldCheck } from 'lucide-react';
+import { soilService } from '../services/soilService';
+import { FlaskConical, Beaker, Loader2, CheckCircle2, TrendingUp, Sparkles, MapPin, Leaf, Info, Sun, ShieldCheck } from 'lucide-react';
 
-const SoilTest: React.FC = () => {
+interface SoilTestProps {
+  userId?: string;
+}
+
+const SoilTest: React.FC<SoilTestProps> = ({ userId }) => {
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState<string | null>(null);
   const [data, setData] = React.useState({
@@ -19,6 +24,10 @@ const SoilTest: React.FC = () => {
     try {
       const report = await analyzeSoilHealth(data);
       setResult(report);
+
+      if (userId) {
+        await soilService.saveSoilTest(userId, data, report);
+      }
     } catch (err) {
       setResult("Oops! Something went wrong. Please check your internet and try again.");
     } finally {

@@ -17,18 +17,30 @@ import ProductCatalog from './components/ProductCatalog';
 import LiveAssistant from './components/LiveAssistant';
 import Login from './components/Login';
 import { AppSection, User, UserRole, Product, CartItem } from './types';
+import { authService } from './services/authService';
 
 const App: React.FC = () => {
   const [user, setUser] = React.useState<User | null>(null);
   const [activeSection, setActiveSection] = React.useState<AppSection>(AppSection.DASHBOARD);
   const [cart, setCart] = React.useState<CartItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const unsubscribe = authService.onAuthStateChange((authUser) => {
+      setUser(authUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe?.subscription.unsubscribe();
+  }, []);
 
   const handleLogin = (newUser: User) => {
     setUser(newUser);
     setActiveSection(newUser.role === UserRole.ADMIN ? AppSection.ADMIN_OVERVIEW : AppSection.DASHBOARD);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authService.signOut();
     setUser(null);
     setCart([]);
   };
@@ -60,6 +72,19 @@ const App: React.FC = () => {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+          </div>
+          <p className="text-slate-400 font-bold">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
@@ -73,13 +98,13 @@ const App: React.FC = () => {
       case AppSection.KNOWLEDGE_GRID:
         return <KnowledgeGrid />;
       case AppSection.SOIL_TEST:
-        return <SoilTest />;
+        return <SoilTest userId={user.id} />;
       case AppSection.BEGINNER_PLANNER:
-        return <BeginnerPlanner />;
+        return <BeginnerPlanner userId={user.id} />;
       case AppSection.YIELD_SIMULATOR:
         return <YieldSimulator />;
       case AppSection.HEALTH_SCAN:
-        return <DiseaseScanner />;
+        return <DiseaseScanner userId={user.id} />;
       case AppSection.MARKET:
         return <MarketHub />;
       case AppSection.RESOURCES:
@@ -88,11 +113,12 @@ const App: React.FC = () => {
         return <SolutionsHub />;
       case AppSection.PRODUCTS:
         return (
-          <ProductCatalog 
-            cart={cart} 
-            addToCart={addToCart} 
-            removeFromCart={removeFromCart} 
-            updateQuantity={updateQuantity} 
+          <ProductCatalog
+            cart={cart}
+            userId={user.id}
+            addToCart={addToCart}
+            removeFromCart={removeFromCart}
+            updateQuantity={updateQuantity}
           />
         );
       case AppSection.ABOUT:

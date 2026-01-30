@@ -1,85 +1,72 @@
 
 import React from 'react';
-// Added ArrowRight to imports to fix "Cannot find name 'ArrowRight'" error.
-import { ShoppingCart, Star, Plus, Minus, Search, Filter, ShoppingBag, X, Check, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Star, Plus, Minus, Search, ShoppingBag, X, ArrowRight, Loader2 } from 'lucide-react';
 import { Product, CartItem } from '../types';
-
-const PRODUCTS_DATA: Product[] = [
-  {
-    id: 'p1',
-    name: 'Premium Basmati Seeds',
-    category: 'Seeds',
-    price: 1200,
-    description: 'High-yield long-grain rice seeds, resistant to common blight.',
-    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400',
-    rating: 4.8
-  },
-  {
-    id: 'p2',
-    name: 'Organic NPK Fertilizer',
-    category: 'Fertilizers',
-    price: 850,
-    description: '10-10-10 balanced organic formula for all-round crop growth.',
-    image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?auto=format&fit=crop&q=80&w=400',
-    rating: 4.5
-  },
-  {
-    id: 'p3',
-    name: 'Smart Soil Sensor V2',
-    category: 'Tech',
-    price: 3500,
-    description: 'Real-time NPK and moisture monitoring with AgroSmart app sync.',
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=400',
-    rating: 4.9
-  },
-  {
-    id: 'p4',
-    name: 'Neem Oil Pesticide (1L)',
-    category: 'Pesticides',
-    price: 450,
-    description: 'Natural organic cold-pressed neem oil for effective pest control.',
-    image: 'https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&q=80&w=400',
-    rating: 4.2
-  },
-  {
-    id: 'p5',
-    name: 'Manual Knapsack Sprayer',
-    category: 'Tools',
-    price: 1800,
-    description: '16L high-pressure manual sprayer with ergonomic back support.',
-    image: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=400',
-    rating: 4.4
-  },
-  {
-    id: 'p6',
-    name: 'Hybrid Maize Variety K9',
-    category: 'Seeds',
-    price: 950,
-    description: 'Drought-resistant maize variety with heavy cob production.',
-    image: 'https://images.unsplash.com/photo-1551731164-6a6828590b23?auto=format&fit=crop&q=80&w=400',
-    rating: 4.6
-  }
-];
+import { productService } from '../services/productService';
 
 interface ProductCatalogProps {
   cart: CartItem[];
+  userId: string;
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
 }
 
-const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, addToCart, removeFromCart, updateQuantity }) => {
+const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, userId, addToCart, removeFromCart, updateQuantity }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filter, setFilter] = React.useState<string>('All');
   const [showCart, setShowCart] = React.useState(false);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [checkingOut, setCheckingOut] = React.useState(false);
 
-  const filteredProducts = PRODUCTS_DATA.filter(p => {
+  React.useEffect(() => {
+    const fetchProducts = async () => {
+      const dbProducts = await productService.getProducts();
+      setProducts(dbProducts);
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
+
+  const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'All' || p.category === filter;
     return matchesSearch && matchesFilter;
   });
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const handleCheckout = async () => {
+    setCheckingOut(true);
+    try {
+      const { error } = await productService.createOrder(
+        userId,
+        cartTotal,
+        'Shipping address to be confirmed'
+      );
+
+      if (!error) {
+        alert('Order placed successfully! Your order is being processed.');
+        setShowCart(false);
+      } else {
+        alert('Failed to place order. Please try again.');
+      }
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin mx-auto" size={40} />
+          <p className="text-slate-500 font-bold">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700 pb-20">
@@ -252,8 +239,13 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, addToCart, remove
                       <span>₹{cartTotal.toLocaleString()}</span>
                     </div>
                   </div>
-                  <button className="w-full py-5 bg-emerald-600 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-3">
-                    Checkout Now <ArrowRight size={24} />
+                  <button
+                    onClick={handleCheckout}
+                    disabled={checkingOut}
+                    className="w-full py-5 bg-emerald-600 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkingOut ? <Loader2 className="animate-spin" size={24} /> : <ArrowRight size={24} />}
+                    {checkingOut ? 'Processing...' : 'Checkout Now'}
                   </button>
                 </div>
               )}

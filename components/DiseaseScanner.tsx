@@ -1,9 +1,14 @@
 
 import React from 'react';
 import { analyzeCropHealth } from '../services/geminiService';
+import { cropService } from '../services/cropService';
 import { Camera, Upload, Loader2, AlertCircle, RefreshCw, FileText, ScanEye, ShieldCheck } from 'lucide-react';
 
-const DiseaseScanner: React.FC = () => {
+interface DiseaseScannerProps {
+  userId?: string;
+}
+
+const DiseaseScanner: React.FC<DiseaseScannerProps> = ({ userId }) => {
   const [image, setImage] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState<string | null>(null);
@@ -28,6 +33,10 @@ const DiseaseScanner: React.FC = () => {
     try {
       const analysis = await analyzeCropHealth(base64Data);
       setResult(analysis);
+
+      if (userId && image) {
+        await cropService.saveFieldScan(userId, image, analysis, 'Medium');
+      }
     } catch (err) {
       console.error(err);
       setResult("Error analyzing image. Please ensure it's a clear photo of your field or crop.");
