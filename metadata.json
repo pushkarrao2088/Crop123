@@ -1,0 +1,9 @@
+{
+  "name": "Copy of AgroSmart - AI Crop Advisor",
+  "description": "A comprehensive AI-driven crop advisory and monitoring platform for smart agriculture, featuring disease detection, market trends, and real-time voice assistance.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
